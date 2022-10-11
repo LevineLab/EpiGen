@@ -1,20 +1,34 @@
-N=1000; %the number of individuals in the population
-time=1000; %the number of generations to run the simulation
-t_split = 40; %if patch='TRUE', t_split is the number of generations (40 in this case) the population stays in one environment or the other
-radius=1; %distance from the hypersphere origin
-nugen = 10; %number of genetic (HT) mutations for each generation
-nuepi = 90; %number of epigenetic (LT) mutations for each generation
-epiback = 0.0205; %epigenetic reversion rate
-mlimitgen=2; %maximum effect a genetic mutation can have
-mlimitepi = 0.3; %maximum effect an epigenetic mutation can have
-oligo = 1; %always leave at 1 for this version of the model. It is a switch that determines number of dimensions of the hypersphere (in our case 5 dimensions)
-epigenetics = 'TRUE'; %switch to toggle effects of epigenetics on or off
-patch = 'TRUE'; %switch to determine if population switches between one environment and another. If TRUE, population goes in and out of selection environment at a frequency of t_split generations. If FALSE, only stays in the selection environment.
-mode = 'negative'; %When patch = 'TRUE', this will run the model in two modes that determines the selection rules for environment 2: random or negative. 'negative' turns on randomly sampling individuals weighted by the reciprocal number of genetic mutations when in environment 2 (stabilizing selection). 'random' turns on randomly sampling indviduals in environment 2 with no weighting. Random sampling weighted by fitness always occurrs in environment 1 
-runnumber = 1; %replicate number of model run
+N = 1000;
+time=15000;
+%time = 10;
+%t_split = [10, 15, 20, 25, 30, 40, 50, 100, 200];
+t_split = mytsplit;
+%t_split = 40;
+radius=1;
+%params = [100 0;10 90;50 50];
+%Nugen = [100 0;10 90;50 50]
+nugen = 10;
+nuepi = 90;
+epiback=0.0205; %ran cost function
+%epiback = epiopt;
+mlimitgen=2;
+%mlimitepi=2;
+%mlimitepi=epi_limit;
+mlimitepi = 0.3;
+%mlimitepi=[2,1,0.5,0.3,0.1];
+%oligo= [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+oligo = 1;
+epigenetics = 'TRUE';
+patch = 'TRUE';
+%mode = mymode; 
+mode = 'negative'; %random or negative
+%runnumber = myrun;
+runnumber = 1;
+tfact = 0.1;
+%tfact = mytfact;
 
 patch_intervals = cell(length(t_split), 1); %Create cell array of matrices to store interval runs
-patch_removed_intervals = cell(length(t_split), 1); %Create cell array of matrices to store interval runs of removed individuals. These are individuals that were not sampled to go into the next generation.
+patch_removed_intervals = cell(length(t_split), 1); %Create cell array of matrices to store interval runs of removed individuals
 results_mat = cell(length(t_split), 1); %Create cell array of matrices to store results matrix runs
 results_removed_mat = cell(length(t_split), 1); %Create cell array of matrices to store results matrix runs of removed individuals
 epi_mat = cell(length(t_split), 1); %Create cell array of matrices to store epigenetic distribution run
@@ -23,23 +37,19 @@ epi_removed_mat = cell(length(t_split), 1); %Create cell array of matrices to st
 gen_removed_mat = cell(length(t_split), 1); %Create cell array of matrices to store genetic distribution run
 
 
-%Driver is a vector of 0's and 1's and has length = time in generations. The loop below will step through
-%every element of Driver. When patch = 'TRUE' and Driver == 1, then select
-%= 1, and the population is randomly sampled to the next generation weighted
-%by fitness, i.e. is in environment 1. When patch = 'TRUE', mode = 'negative', and
-%Driver == 0, then the population is randomly sampled to the next
-%generation weighted by the reciprocal of the number of genetic mutations (stabilizing selection),
-%i.e. is in environment 2.
+    
 Driver=ones(time,1);
 for q=t_split:t_split*2:time
-    Driver(q:q+t_split-1)=0; %generate time intervals to switch back and forth from
+    Driver(q+1:q+t_split-1)=0; %generate time intervals to switch back and forth from
 end
 
-%Run the model
-[results, population_disgen, population_disepi, results_removed, population_removed_disgen, population_removed_disepi]=EpiGen_simulation(N,time,radius,nugen,nuepi, ...
-    epiback, mlimitgen, mlimitepi, epigenetics, patch, oligo, Driver, mode, runnumber, t_split);
+[results, population_disgen, population_disepi, results_removed, population_removed_disgen, population_removed_disepi, population_numgen]= EpiGen_simulation(N,time,radius,nugen,nuepi, ...
+    epiback, mlimitgen, mlimitepi, epigenetics, patch, oligo, Driver, mode, runnumber, tfact);
 
-%PULL DISTRIBUTION OF GENETIC EFFECTS FOR 'KEPT' (NON-REMOVED) POPULATIONS
+%PULL NUMBER OF GENETIC MUTATIONS FOR KEPT POPULATIONS
+dlmwrite(['popnumgen_' num2str(runnumber) '_' mode '.txt'],population_numgen, 'delimiter', '\t');
+
+%PULL DISTRIBUTION OF GENETIC EFFECTS FOR 'KEPT' POPULATIONS
 dis_gen = zeros(N, time);
 [mgen, ngen] = size(population_disgen);
 for g=1:mgen
@@ -158,5 +168,163 @@ dlmwrite(['results_' num2str(runnumber) '_' mode '.txt'], results.co, 'delimiter
 results_removed_mat = results_removed;
 dlmwrite(['results_removed_' num2str(runnumber) '_' mode '.txt'], results_removed, 'delimiter', '\t');
 
+    
+    
+    
+    %PLOT DISTANCE OF GENETIC/TOTAL AND EPIGENETIC/TOTAL MUTATIONS%%%
+    %walk_epi_dist = sum(abs(results.co(:,6)));
+    
+    %for g=1:length(results.co(:,6))
+        
+        %calculate epigenetic potential
+    %    current_gen(g) = (walk_epi_dist - sum(abs(results.co(1:g,6))))/walk_epi_dist; 
 
+    %end
+    %plot(results.co(:,1), current_gen);
+    %gen_18 = (walk_epi_dist - sum(abs(results.co(1:18,6))))/walk_epi_dist;
+    %gen_50 = (walk_epi_dist - sum(abs(results.co(1:50,6))))/walk_epi_dist;
+    %gen_100 = (walk_epi_dist - sum(abs(results.co(1:100,6))))/walk_epi_dist;
+    %gen_432 = (walk_epi_dist - sum(abs(results.co(1:432,6))))/walk_epi_dist;
+    %gen_756 = (walk_epi_dist - sum(abs(results.co(1:756,6))))/walk_epi_dist;
+    %m_data = [18 gen_18; 432 gen_432; 756 gen_756];
+    %m_data = [18 gen_18; 50 gen_50; 100 gen_100];
+    %plot(m_data(:,1), m_data(:,2));
+    %PLOT GENETIC/TOTAL AND EPIGENETIC/TOTAL MUTATIONS%%%
+    
+    
+    %%%%%shaded error tutorial%%%%
+    %https://www.mathworks.com/matlabcentral/answers/39540-continuous-error-bars
+    %x = linspace(0,1,20)';
+    %y = sin(x);
+    %dy = .1*(1+rand(size(y))).*y;  % made-up error values
+    %fill([x;flipud(x)],[y-dy;flipud(y+dy)],[.9 .9 .9],'linestyle','none');
+    %line(x,y)
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %{
+    if oligo(i) == 1
+
+        cond = 'n = 5';
+
+        %Save n = 5 results to c matrix 
+        n5 = results.co;
+        
+        dlmwrite('n5.txt',n5,'delimiter','\t','precision',3);
+        
+    elseif oligo(i) == 2
+
+        cond = 'n = 10';
+
+        %Save n = 10 results to cp matrix
+        n10 = results.co;
+        
+        %dlmwrite('n10.txt',n10,'delimiter','\t','precision',3);
+        
+    elseif oligo(i) == 3
+
+        cond = 'n = 15';
+
+        %Save n = 15 results to ci matrix
+        n15 = results.co;
+        
+        %dlmwrite('n15.txt',n15,'delimiter','\t','precision',3);
+        
+    elseif oligo(i) == 4
+
+        cond = 'n = 20';
+
+        %Save n = 20 results to cpi matrix
+        n20 = results.co;
+        
+        %dlmwrite('n20.txt',n20,'delimiter','\t','precision',3);
+       
+    elseif oligo(i) == 5
+
+        cond = 'n = 25';
+
+        %Save n = 25 results to cpi matrix
+        n25 = results.co;
+        
+        %dlmwrite('n25.txt',n25,'delimiter','\t','precision',3);
+        
+    elseif oligo(i) == 6
+
+        cond = 'n = 30';
+
+        %Save n = 30 results to cpi matrix
+        n30 = results.co;
+        
+        %dlmwrite('n30.txt',n30,'delimiter','\t','precision',3);
+        
+    elseif oligo(i) == 7
+
+        cond = 'n = 35';
+
+        %Save n = 35 results to cpi matrix
+        n35 = results.co;
+        
+        %dlmwrite('n35.txt',n35,'delimiter','\t','precision',3);
+        
+    elseif oligo(i) == 8
+
+        cond = 'n = 40';
+
+        %Save n = 40 results to cpi matrix
+        n40 = results.co;
+        
+        %dlmwrite('n40.txt',n40,'delimiter','\t','precision',3);
+        
+    elseif oligo(i) == 9
+
+        cond = 'n = 5 + 20';
+
+        %Save n = 5 + 20 results to cpi matrix
+        n_5_20 = results.co;
+        
+        %dlmwrite('n_5_20.txt',n_5_20,'delimiter','\t','precision',3);
+        
+    elseif oligo(i) == 10
+
+        cond = 'n = 5 + 40';
+
+        %Save n = 5 + 40 results to cpi matrix
+        n_5_40 = results.co;
+        
+        %dlmwrite('n_5_40.txt',n_5_40,'delimiter','\t','precision',3);
+        
+    end
+
+
+    legendinfo{i}= ... 
+        ['Oligotrophic conditions = ' cond];
+        %['EpiGenetic mutational limit = ' num2str(mlimitepi(i))];
+            
+    
+    
+    %figure
+    
+    
+%}
+    
+
+
+%save results_mat 
+%save results_removed_mat
 save patch_intervals
+%save patch_removed_intervals
+%save gen_mat
+%save gen_removed_mat
+%save epi_mat
+%save epi_removed_mat
+
+
+%legend(legendinfo, 'Location', 'northwest');
+%title('Fitness increases with different Epigenetic mutational effects Genetic Supply = 10 -- Epigenetic Supply = 90 ');
+%xlabel('Generations')
+%ylabel('Relative Number of mutations to total pool')
+%hold off
+
+
+
+%saveas(figure1,'test.pdf')
+
+%quit
